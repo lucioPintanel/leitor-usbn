@@ -1,0 +1,37 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Leitor USBN API",
+    "version": "1.0.0",
+    "description": "API interna para listar livros"
+  },
+  "paths": {
+    "/api/books": {
+      "get": {
+        "summary": "Listar livros",
+        "responses": {
+          "200": {
+            "description": "Lista de livros",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "isbn": {"type": "string"},
+                      "title": {"type": "string"},
+                      "author_name": {"type": "string"},
+                      "publisher_name": {"type": "string"},
+                      "pages": {"type": "integer"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "database": {
+    "type": "sqlite",
+    "path": "./books.db"
+  },
+  "api": {
+    "provider": "openlibrary",
+    "baseUrl": "https://openlibrary.org/api/books",
+    "timeout": 10
+  },
+  "reader": {
+    "inputFile": "./config/isbn_list.txt",
+    "type": "file",
+    "verbose": true
+  },
+  "processor": {
+    "maxWorkers": 1,
+    "delayBetweenRequests": 500,
+    "maxRetries": 3,
+    "verbose": true
+  }
+}
