@@ -25,7 +25,7 @@
               <input type="text" class="form-control" id="searchISBN" placeholder="Ex: 0132350882 ou 978-0-13-235088-2" required>
             </div>
             <button type="submit" class="btn btn-primary w-100" id="searchBtn">
-              <span id="searchBtnText">Buscar na API</span>
+              <span id="searchBtnText">🔍 Buscar na API</span>
               <span id="searchSpinner" class="spinner-border spinner-border-sm ms-2" style="display:none;"></span>
             </button>
           </form>
@@ -69,12 +69,13 @@
               <label for="description" class="form-label">Descrição:</label>
               <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrição do livro"></textarea>
             </div>
-            <button type="submit" class="btn btn-success w-100">
-              Salvar Livro
+            <button type="submit" class="btn btn-success w-100" id="submitBtn">
+              <span id="submitBtnText">💾 Salvar Livro</span>
+              <span id="submitSpinner" class="spinner-border spinner-border-sm ms-2" style="display:none;"></span>
             </button>
           </form>
-          <div id="formError" class="alert alert-danger mt-3" style="display:none;"></div>
-          <div id="formSuccess" class="alert alert-success mt-3" style="display:none;"></div>
+          <div id="formError" class="alert alert-danger mt-3" style="display:none;" role="alert"></div>
+          <div id="formSuccess" class="alert alert-success mt-3" style="display:none;" role="alert"></div>
         </div>
       </div>
 
@@ -91,11 +92,13 @@ function searchISBN(event) {
   event.preventDefault();
   const isbn = document.getElementById('searchISBN').value;
   const searchBtn = document.getElementById('searchBtn');
+  const searchBtnText = document.getElementById('searchBtnText');
   const searchSpinner = document.getElementById('searchSpinner');
   const searchError = document.getElementById('searchError');
   const searchSuccess = document.getElementById('searchSuccess');
 
   searchBtn.disabled = true;
+  searchBtnText.textContent = 'Buscando...';
   searchSpinner.style.display = 'inline-block';
   searchError.style.display = 'none';
   searchSuccess.style.display = 'none';
@@ -116,22 +119,38 @@ function searchISBN(event) {
         document.getElementById('pages').value = book.number_of_pages || '';
         document.getElementById('description').value = book.description && book.description.value ? book.description.value : '';
 
-        searchSuccess.textContent = 'Livro encontrado! Dados preenchidos no formulário abaixo.';
+        searchSuccess.innerHTML = `
+          <div>
+            <strong>📖 Livro Encontrado!</strong><br>
+            <small>Dados preenchidos no formulário abaixo. Você pode editar antes de salvar.</small>
+          </div>
+        `;
         searchSuccess.style.display = 'block';
 
         // Scroll para o formulário
         document.getElementById('addBookForm').scrollIntoView({ behavior: 'smooth' });
       } else {
-        searchError.textContent = `Livro com ISBN ${isbn} não encontrado na OpenLibrary. Preencha manualmente.`;
+        searchError.innerHTML = `
+          <div>
+            <strong>📭 Livro Não Encontrado</strong><br>
+            <small>ISBN: ${isbn} não foi localizado na OpenLibrary. Preencha os dados manualmente.</small>
+          </div>
+        `;
         searchError.style.display = 'block';
       }
     })
     .catch(error => {
-      searchError.textContent = `Erro ao buscar ISBN: ${error.message}`;
+      searchError.innerHTML = `
+        <div>
+          <strong>⚠️ Erro na Busca</strong><br>
+          <small>${error.message}</small>
+        </div>
+      `;
       searchError.style.display = 'block';
     })
     .finally(() => {
       searchBtn.disabled = false;
+      searchBtnText.textContent = '🔍 Buscar na API';
       searchSpinner.style.display = 'none';
     });
 }
@@ -141,6 +160,9 @@ function addBook(event) {
   event.preventDefault();
   const formError = document.getElementById('formError');
   const formSuccess = document.getElementById('formSuccess');
+  const submitBtn = document.getElementById('submitBtn');
+  const submitBtnText = document.getElementById('submitBtnText');
+  const submitSpinner = document.getElementById('submitSpinner');
 
   formError.style.display = 'none';
   formSuccess.style.display = 'none';
@@ -157,6 +179,11 @@ function addBook(event) {
   };
 
   console.log('Enviando livro:', book);
+
+  // Desabilitar botão e mostrar spinner
+  submitBtn.disabled = true;
+  submitBtnText.textContent = 'Salvando...';
+  submitSpinner.style.display = 'inline-block';
 
   fetch('/api/books', {
     method: 'POST',
@@ -177,17 +204,34 @@ function addBook(event) {
     .then(data => {
       console.log('Livro salvo:', data);
       formSuccess.innerHTML = `
-        <strong>✓ Sucesso!</strong> Livro "${book.title}" (ISBN: ${book.isbn}) salvo com sucesso.<br>
-        <a href="/ui" class="btn btn-sm btn-success mt-2">Ver Lista de Livros</a>
+        <div style="text-align: center;">
+          <h5 style="margin-bottom: 1rem;">✅ Livro Adicionado com Sucesso!</h5>
+          <p><strong>${book.title}</strong></p>
+          <p style="color: #666; font-size: 0.95rem;">ISBN: ${book.isbn}</p>
+          <a href="/ui" class="btn btn-success btn-sm me-2">📚 Ver Lista de Livros</a>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('addBookForm').reset(); document.getElementById('formSuccess').style.display='none'; submitBtn.disabled=false; submitBtnText.textContent='💾 Salvar Livro'; submitSpinner.style.display='none';">➕ Adicionar Outro</button>
+        </div>
       `;
       formSuccess.style.display = 'block';
-      // Limpar formulário
-      document.getElementById('addBookForm').reset();
+      // Scroll para mensagem de sucesso
+      formSuccess.scrollIntoView({ behavior: 'smooth' });
     })
     .catch(error => {
       console.error('Erro:', error);
-      formError.innerHTML = `<strong>✗ Erro ao salvar livro:</strong> ${error.message}`;
+      formError.innerHTML = `
+        <div>
+          <h6>❌ Erro ao Salvar Livro</h6>
+          <p style="margin-bottom: 0; font-size: 0.95rem;">${error.message}</p>
+        </div>
+      `;
       formError.style.display = 'block';
+      // Scroll para mensagem de erro
+      formError.scrollIntoView({ behavior: 'smooth' });
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtnText.textContent = '💾 Salvar Livro';
+      submitSpinner.style.display = 'none';
     });
 }
 </script>
