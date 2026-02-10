@@ -173,19 +173,156 @@ go build -o leitor-usbn-web ./src/web
 
 ---
 
-## Sessão 2: [A PREENCHER APÓS PRÓXIMA SESSÃO]
+## Sessão 2: Testes unitários e interface Database
+**Data**: 09 de Fevereiro de 2026
+**Participantes**: Engenheiro/Mentor (Claude), Desenvolvedor (lucioPintanel)
+**Duração estimada**: ~1.5 horas
 
-**Data**: [dd de mês de 2026]
-**Participantes**: 
-**Duração estimada**: 
+### Objetivos cumpridos ✅
 
-### Objetivos
+1. **Sessão 1 finalizada com PR mergeada**
+   - ✅ PR `feature/docs` → `main` foi mergeada com sucesso
+   - ✅ `main` está atualizado com 7 commits (documentação + CI/CD)
+   - ✅ Workflow de CI rodou (verificar status em Actions)
 
-- [ ] 
+2. **Interface Database criada**
+   - `database/interface.go` — Define `DatabasePort` interface
+   - Métodos: SaveBook, GetOrCreateAuthor, GetOrCreatePublisher, COUNT Books, etc
+   - Facilita mocking em testes e desacopla `processor` de implementação específica
+   - Garantia: `Database` implementa `DatabasePort` (compile-time check)
 
-### Progresso
+3. **Refatoração do Processor**
+   - `processor/processor.go` — Alterado para aceitar `DatabasePort` em vez de `*database.Database`
+   - Backward-compatible: código existente continua funcionando
+   - Pronto para testes unitários
 
-...
+4. **Testes unitários implementados**
+   - `processor/database_mock.go` — Mock de `DatabasePort` com rastreamento de chamadas
+   - `processor/processor_test.go` — 3 testes:
+     - `TestProcessorConfig` — verifica normalização de config
+     - `TestProcessorWithMockDatabase` — testa salvamento com mock
+     - `TestProcessorStats` — testa cálculo de estatísticas
+   - `api/types_test.go` — 3 testes:
+     - `TestConvertToBookData` — testa conversão de API response
+     - `TestConvertToBookDataEmptyValues` — valores vazios
+     - `TestBookDataStructure` — campos obrigatórios
+   - `config/config_test.go` — 4 testes:
+     - `TestLoadConfig` — carregamento válido
+     - `TestLoadConfigNotFound` — erro ao arquivo ausente
+     - `TestConfigDefaults` — aplicação de defaults
+     - `TestConfigPreserveValues` — preservação de valores customizados
+
+### Resultados de testes
+
+```
+go test -v ./processor ./api ./config
+
+PASS: leitor-usbn/processor       (3/3 tests passed)
+PASS: leitor-usbn/api             (3/3 tests passed) 
+PASS: leitor-usbn/config          (4/4 tests passed)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total: 10 testes, 100% passing ✅
+```
+
+### Commits criados
+
+| Hash | Mensagem |
+|------|----------|
+| da72589 | test: add unit tests for processor, api, and config with mocks |
+
+### Mudanças no projeto
+
+- `database/interface.go` — **NOVO** (interface)
+- `processor/processor.go` — **MODIFICADO** (type signature)
+- `processor/database_mock.go` — **NOVO** (mock para testes)
+- `processor/processor_test.go` — **NOVO** (testes)
+- `api/types_test.go` — **NOVO** (testes)
+- `config/config_test.go` — **NOVO** (testes)
+
+### Branch
+
+- **feature/tests** — Criada a partir de `main`
+- Status: Push concluído, PR pronta para ser criada
+- Link: https://github.com/lucioPintanel/leitor-usbn/compare/main...feature/tests
+
+### Decisões arquiteturais
+
+1. **Interface DatabasePort** — padrão Dependency Injection
+   - Permite trocar implementação (SQLite → PostgreSQL later)
+   - Facilita testes com mocks
+   - Sem impacto no código existente (refactor segura)
+
+2. **MockDatabase com rastreamento** — contadores de chamadas
+   - Permite verificar se métodos foram chamados corretamente
+   - Reduz necessidade de BDD/integração tests
+
+3. **Testes focado em unidades**, não integração
+   - Sem banco de dados real
+   - Sem chamadas HTTP reais
+   - Rápidos e determinísticos
+
+### Próximos passos (prioridade)
+
+#### **Imediato** (esta sessão):
+- [ ] Abrir PR `feature/tests` → `main`
+- [ ] Aguardar CI passar
+- [ ] Merge da PR
+
+#### **Curto prazo** (próximas horas):
+- [ ] Refactor do `api.BookAPIClient` para aceitar `context.Context`
+  - Arquivo: `api/client.go`
+  - Métodos: `GetBookByISBN(ctx context.Context, isbn string) (*OpenLibraryResponse, error)`
+  - Respeitar `ctx.Done()` durante requisição
+- [ ] Testes para `api.BookAPIClient` com mock HTTP
+  - Usar `net/http/httptest`
+  - Testar retry logic
+- [ ] Aumentar cobertura de testes:
+  - `reader/` (file_reader, barcode_reader)
+  - `processor/` (mais cenários de erro)
+
+#### **Médio prazo** (1-2 dias):
+- [ ] Normalização/validação ISBN
+  - Remover hífens
+  - Validar checksum (ISBN-13)
+  - Usar pacote como `github.com/isbn/goisbn`
+- [ ] Migrations para schema (golang-migrate)
+- [ ] Pre-commit hooks (go fmt, go vet, testes)
+
+#### **Longo prazo** (1+ semana):
+- [ ] Logging estruturado (logrus/zerolog em vez de log.Printf)
+- [ ] Suporte a múltiplos DBs (interface)
+- [ ] Docker support (Dockerfile, docker-compose)
+- [ ] API REST mais robusta (validação, erro handling)
+
+### Observações técnicas
+
+**O que funcionou bem**:
+- ✅ Mock simples sem frameworks pesados
+- ✅ Testes sem dependências externas
+- ✅ Interface na medida certa (não overengineered)
+- ✅ Backward compatibility na refatoração
+
+**Possíveis melhorias futuras**:
+- 📌 Usar `testify/assert` para assertions mais limpas
+- 📌 Adicionar fixtures/factories para dados de teste
+- 📌 Benchmarks para performance-critical code
+- 📌 Property-based testing (rare, mas útil para ISBN validation)
+
+### Comandos para próxima sessão
+
+```bash
+# Puxar última main (com testes)
+git fetch origin && git checkout main && git pull
+
+# Verificar cobertura de testes
+go test -cover ./...
+
+# Rodar testes continuamente (se houver `watchexec`)
+watchexec -e go,json go test ./...
+
+# Criar branch de feature para context-aware APIs
+git checkout -b feature/context-aware-apis
+```
 
 ---
 
@@ -195,10 +332,11 @@ go build -o leitor-usbn-web ./src/web
 |---------|--------|-------|
 | **Documentação** | ✅ Concluído | README, architecture, CONTRIBUTING, CI/CD |
 | **Git/GitHub** | ✅ Concluído | Repositório remoto, branches, history |
-| **CI/CD** | ✅ Concluído | GitHub Actions workflow pronto |
-| **Testes** | 🔴 Não iniciado | Próxima prioridade |
-| **Interfaces (refactor)** | 🔴 Não iniciado | Após testes |
-| **Context-aware APIs** | 🔴 Não iniciado | Após interfaces |
+| **CI/CD** | ✅ Concluído | GitHub Actions workflow pronto e rodando |
+| **Testes unitários** | ✅ Concluído (Sessão 2) | 10 testes, 100% passing, mocks implementados |
+| **Interface Database** | ✅ Concluído (Sessão 2) | DatabasePort criada, refactor segura |
+| **Context-aware APIs** | 🔴 Não iniciado | Próximo: adaptar api.BookAPIClient |
+| **ISBN validation** | 🔴 Não iniciado | Após context-aware |
 | **Production-ready** | 🟡 Parcial | Falta logging, migrations, Docker |
 
 ---
@@ -267,4 +405,4 @@ Primeira iteração de documentação (Sessão 1). Próximas prioridades: interf
 
 ---
 
-**Última atualização**: 09/02/2026 — Sessão 1 concluída
+**Última atualização**: 09/02/2026 — Sessão 2: Testes unitários e interface Database completada ✅
