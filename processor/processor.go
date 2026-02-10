@@ -30,7 +30,7 @@ type ProcessResult struct {
 
 // Processor orquestra a leitura, consulta e armazenamento de livros
 type Processor struct {
-	db        *database.Database
+	db        database.DatabasePort
 	apiClient *api.BookAPIClient
 	reader    reader.ISBNReader
 	config    ProcessorConfig
@@ -40,7 +40,7 @@ type Processor struct {
 
 // NewProcessor cria uma nova instância do processador
 func NewProcessor(
-	db *database.Database,
+	db database.DatabasePort,
 	apiClient *api.BookAPIClient,
 	isbnReader reader.ISBNReader,
 	config ProcessorConfig,
