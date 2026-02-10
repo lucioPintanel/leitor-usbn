@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adicionar Livro - Leitor USBN</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-6">
+      <h1>Adicionar Novo Livro</h1>
+      <p class="text-muted">Preencha os dados do livro ou busque pelo ISBN na API OpenLibrary</p>
+
+      <!-- Busca por ISBN na API -->
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Buscar por ISBN (OpenLibrary)</h5>
+        </div>
+        <div class="card-body">
+          <form id="searchForm" onsubmit="searchISBN(event)">
+            <div class="mb-3">
+              <label for="searchISBN" class="form-label">ISBN:</label>
+              <input type="text" class="form-control" id="searchISBN" placeholder="Ex: 0132350882 ou 978-0-13-235088-2" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="searchBtn">
+              <span id="searchBtnText">Buscar na API</span>
+              <span id="searchSpinner" class="spinner-border spinner-border-sm ms-2" style="display:none;"></span>
+            </button>
+          </form>
+          <div id="searchError" class="alert alert-danger mt-3" style="display:none;"></div>
+          <div id="searchSuccess" class="alert alert-success mt-3" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Formulário manual de cadastro -->
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">Cadastrar Manualmente</h5>
+        </div>
+        <div class="card-body">
+          <form id="addBookForm" onsubmit="addBook(event)">
+            <div class="mb-3">
+              <label for="isbn" class="form-label">ISBN:</label>
+              <input type="text" class="form-control" id="isbn" name="isbn" placeholder="Ex: 0132350882" required>
+            </div>
+            <div class="mb-3">
+              <label for="title" class="form-label">Título:</label>
+              <input type="text" class="form-control" id="title" name="title" placeholder="Ex: Clean Code" required>
+            </div>
+            <div class="mb-3">
+              <label for="author" class="form-label">Autor:</label>
+              <input type="text" class="form-control" id="author" name="author" placeholder="Ex: Robert C. Martin">
+            </div>
+            <div class="mb-3">
+              <label for="publisher" class="form-label">Editora:</label>
+              <input type="text" class="form-control" id="publisher" name="publisher" placeholder="Ex: Prentice Hall">
+            </div>
+            <div class="mb-3">
+              <label for="publishDate" class="form-label">Data de Publicação:</label>
+              <input type="text" class="form-control" id="publishDate" name="publishDate" placeholder="Ex: 2008">
+            </div>
+            <div class="mb-3">
+              <label for="pages" class="form-label">Páginas:</label>
+              <input type="number" class="form-control" id="pages" name="pages" placeholder="Ex: 464">
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label">Descrição:</label>
+              <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrição do livro"></textarea>
+            </div>
+            <button type="submit" class="btn btn-success w-100">
+              Salvar Livro
+            </button>
+          </form>
+          <div id="formError" class="alert alert-danger mt-3" style="display:none;"></div>
+          <div id="formSuccess" class="alert alert-success mt-3" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <a href="/ui" class="btn btn-secondary">← Voltar para Lista</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Buscar ISBN na OpenLibrary API
+function searchISBN(event) {
+  event.preventDefault();
+  const isbn = document.getElementById('searchISBN').value;
+  const searchBtn = document.getElementById('searchBtn');
+  const searchSpinner = document.getElementById('searchSpinner');
+  const searchError = document.getElementById('searchError');
+  const searchSuccess = document.getElementById('searchSuccess');
+
+  searchBtn.disabled = true;
+  searchSpinner.style.display = 'inline-block';
+  searchError.style.display = 'none';
+  searchSuccess.style.display = 'none';
+
+  // Chamar API OpenLibrary diretamente do navegador
+  fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`)
+    .then(response => response.json())
+    .then(data => {
+      const key = `ISBN:${isbn}`;
+      if (data[key]) {
+        const book = data[key];
+        // Preencher formulário com dados da API
+        document.getElementById('isbn').value = isbn;
+        document.getElementById('title').value = book.title || '';
+        document.getElementById('author').value = book.authors && book.authors.length > 0 ? book.authors[0].name : '';
+        document.getElementById('publisher').value = book.publishers && book.publishers.length > 0 ? book.publishers[0].name : '';
+        document.getElementById('publishDate').value = book.publish_date || '';
+        document.getElementById('pages').value = book.number_of_pages || '';
+        document.getElementById('description').value = book.description && book.description.value ? book.description.value : '';
+
+        searchSuccess.textContent = 'Livro encontrado! Dados preenchidos no formulário abaixo.';
+        searchSuccess.style.display = 'block';
+
+        // Scroll para o formulário
+        document.getElementById('addBookForm').scrollIntoView({ behavior: 'smooth' });
+      } else {
+        searchError.textContent = `Livro com ISBN ${isbn} não encontrado na OpenLibrary. Preencha manualmente.`;
+        searchError.style.display = 'block';
+      }
+    })
+    .catch(error => {
+      searchError.textContent = `Erro ao buscar ISBN: ${error.message}`;
+      searchError.style.display = 'block';
+    })
+    .finally(() => {
+      searchBtn.disabled = false;
+      searchSpinner.style.display = 'none';
+    });
+}
+
+// Salvar livro via API local
+function addBook(event) {
+  event.preventDefault();
+  const formError = document.getElementById('formError');
+  const formSuccess = document.getElementById('formSuccess');
+
+  formError.style.display = 'none';
+  formSuccess.style.display = 'none';
+
+  const book = {
+    isbn: document.getElementById('isbn').value,
+    title: document.getElementById('title').value,
+    author: document.getElementById('author').value,
+    publisher: document.getElementById('publisher').value,
+    publish_date: document.getElementById('publishDate').value,
+    pages: parseInt(document.getElementById('pages').value) || 0,
+    description: document.getElementById('description').value,
+    cover_url: ''
+  };
+
+  console.log('Enviando livro:', book);
+
+  fetch('/api/books', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(book)
+  })
+    .then(response => {
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        return response.json().then(e => { 
+          throw new Error(e.error || 'Erro ao salvar'); 
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Livro salvo:', data);
+      formSuccess.innerHTML = `
+        <strong>✓ Sucesso!</strong> Livro "${book.title}" (ISBN: ${book.isbn}) salvo com sucesso.<br>
+        <a href="/ui" class="btn btn-sm btn-success mt-2">Ver Lista de Livros</a>
+      `;
+      formSuccess.style.display = 'block';
+      // Limpar formulário
+      document.getElementById('addBookForm').reset();
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      formError.innerHTML = `<strong>✗ Erro ao salvar livro:</strong> ${error.message}`;
+      formError.style.display = 'block';
+    });
+}
+</script>
+</body>
+</html>
