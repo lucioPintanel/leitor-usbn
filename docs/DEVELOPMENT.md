@@ -405,4 +405,136 @@ Primeira iteração de documentação (Sessão 1). Próximas prioridades: interf
 
 ---
 
-**Última atualização**: 09/02/2026 — Sessão 2: Testes unitários e interface Database completada ✅
+## Sessão 3: Web UI Enhancement — Formulário de Cadastro de Livros
+**Data**: 09 de Fevereiro de 2026
+**Participantes**: Engenheiro/Mentor (Claude), Desenvolvedor (lucioPintanel)
+**Duração estimada**: ~1.5 horas
+**Branch**: `feature/tests` (continuação)
+
+### Objetivos cumpridos ✅
+
+1. **Novo template HTML para cadastro de livros**
+   - `src/web/templates/add-book.html` — Formulário com 2 seções:
+     - **Busca por OpenLibrary API** (client-side fetch ao ISBN)
+     - **Cadastro manual** com validação de formulário
+   - ~190 linhas de HTML + JavaScript
+   - Design responsivo com Bootstrap 5.3.0
+
+2. **Handlers HTTP implementados**
+   - `GET /add` — Serve o template add-book.html
+   - `POST /api/books` — Salva livro no banco com validações
+   - Refactoring: `handleAPIBooks()` despacha GET/POST para `/api/books`
+   - Melhorado: Erros retornam JSON com mensagens descritivas
+
+3. **Fluxo de dados completo**
+   - Formulário → JSON → POST /api/books
+   - Handler valida ISBN, cria/obtém author e publisher
+   - Salva book no DB via `db.SaveBook()`
+   - Retorna livro salvo com status 201 (Created)
+
+4. **Integração com banco de dados**
+   - Chama `db.GetOrCreateAuthor()` se autor fornecido
+   - Chama `db.GetOrCreatePublisher()` se editora fornecida
+   - Usa `time.Now()` para CreatedAt/UpdatedAt (não string)
+   - IDs de author/publisher como `*int` (nullable)
+
+5. **Feedback visual para o usuário**
+   - Spinners de loading durante busca ISO e envio do formulário
+   - Botões desabilitados durante requisição (anti double-submit)
+   - Mensagens de sucesso com detalhes do livro (ISBN, título)
+   - Mensagens de erro com informações úteis de debug
+   - Emojis e HTML formatting para melhor UX
+   - Auto-scroll para mensagens de feedback
+   - Botão "Adicionar Outro" sem recarregar página
+
+6. **Dashboard atualizado**
+   - `src/web/templates/books.html` — Adicionado link "➕ Adicionar Livro"
+   - Via `GET /add`
+
+### Tipos de mudança
+
+- ✅ Nova feature (formulário de cadastro)
+- ✅ Novo handler de API (POST)
+- ✅ Novo template HTML
+- ✅ Melhorias de UX/feedback visual
+
+### Commits criados
+
+| # | Hash | Mensagem | Mudanças |
+|---|------|----------|----------|
+| 7 | adef8bf | feat(web): implement book creation form | add-book.html, handlers POST/GET |
+| 8 | 09f4d77 | feat(web): add visual feedback | Loading, sucesso/erro, emojis |
+
+### Fluxo de teste realizado
+
+```bash
+# 1. Terminal 1: Servidor
+$ go run ./src/web -port 8080
+
+# 2. Terminal 2: Teste POST via curl
+$ curl -X POST http://localhost:8080/api/books \
+  -H "Content-Type: application/json" \
+  -d '{"isbn":"978-0-13-235089-9","title":"The Pragmatic Programmer",...}'
+# ✅ Resultado: 201 Created com JSON do livro salvo
+
+# 3. Browser: http://localhost:8080/add
+# ✅ Formulário funcionando, feedback visual ativo
+# ✅ GET /api/books retorna lista com novos livros
+```
+
+### Mudanças de arquivos
+
+**Modificados**:
+- `src/web/main.go` (+120 linhas) — Novos handlers + métodos auxiliares
+- `src/web/templates/books.html` (+1 linha) — Link para /add
+- `src/web/templates/add-book.html` (novo arquivo, 190 linhas) — Formulário completo
+
+**Padrões usados**:
+- Method dispatch em `handleAPIBooks()` — une GET/POST em um handler
+- JSON error responses — descritivas, parsáveis
+- Client-side fetch + server-side validation — segurança + UX
+- HTML form templates com Golang — `tmpl.ExecuteTemplate()`
+
+### Problemas encontrados e resolvidos
+
+| Problema | Solução | Status |
+|----------|---------|--------|
+| *int64 vs *int type mismatch | Alterado para usar `*int` conforme database.Book | ✅ |
+| Erro HTTP sem JSON | Refactored para retornar `{"error": "..."}` | ✅ |
+| Sem feedback visual | Adicionados spinners, emojis, mensagens formatadas | ✅ |
+| Botão clicável durante requisição | Desabilitar submitBtn durante fetch | ✅ |
+| Sem confirmação de sucesso | Exibir detalhes do livro + links de ação | ✅ |
+
+### Stack revisitado nesta sessão
+
+- **Go** — `net/http` routing, JSON marshaling/unmarshaling, `time` package
+- **HTML/JavaScript** — Fetch API, DOM manipulation, error handling
+- **Bootstrap** — Form components, alerts, spinners, buttons
+- **HTTP** — POST com JSON body, status codes (201, 400, 500), Content-Type headers
+
+### Próximas ações prioritárias (Sessão 4)
+
+1. **[ ] Testes para handlers web**
+   - Unit tests para POST /api/books (mock database)
+   - Unit tests para GET /add (template rendering)
+   - `src/web/main_test.go` — ~50 linhas esperadas
+
+2. **[ ] Validação de ISBN**
+   - Verificar duplicatas (UNIQUE constraint no DB)
+   - Formatos válidos (10 ou 13 dígitos)
+   - Mensagem clara se ISBN já existe
+
+3. **[ ] Melhorias opcionais**
+   - Paginação na lista de livros (/ui)
+   - Filtros (por autor, editora, data)
+   - Editar/deletar livro existente
+   - Busca full-text
+
+4. **[ ] Preparar PR** `feature/tests` → `main`
+   - Incluir testes + handlers + templates
+   - Rebase/squash commits se necessário
+   - Descrição detalhada (vide template Session 1)
+
+---
+
+**Última atualização**: 09/02/2026 — Sessão 3: Web UI com formulário de cadastro completada ✅
