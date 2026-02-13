@@ -10,12 +10,13 @@ import (
 	"text/template"
 	"time"
 
+	"leitor-usbn/api"
 	"leitor-usbn/database"
 )
 
 var (
 	tmpl *template.Template
-	db   *database.Database
+	db   database.DatabasePort
 )
 
 func main() {
@@ -137,6 +138,25 @@ func handleAPICreateBook(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "ISBN obrigatório"})
+		return
+	}
+
+	// validar ISBN format
+	if err := api.ValidateISBN(input.ISBN); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "ISBN inválido: " + err.Error()})
+		return
+	}
+
+	// normalizar ISBN
+	input.ISBN = api.NormalizeISBN(input.ISBN)
+
+	// validar título
+	if input.Title == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Título obrigatório"})
 		return
 	}
 
