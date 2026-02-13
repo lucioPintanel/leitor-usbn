@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"leitor-usbn/api"
 	"leitor-usbn/database"
 )
 
@@ -245,6 +246,105 @@ func TestGETAPISoBooksInvalidMethod(t *testing.T) {
 
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+type apiISBNResponse struct {
+	ISBN        string `json:"isbn"`
+	Title       string `json:"title"`
+	Author      string `json:"author"`
+	Publisher   string `json:"publisher"`
+	PublishDate string `json:"publish_date"`
+	Pages       int    `json:"pages"`
+	Description string `json:"description"`
+	CoverURL    string `json:"cover_url"`
+}
+
+// TestAPISearchISBN testa o proxy /api/isbn
+func TestAPISearchISBN(t *testing.T) {
+	tests := []struct {
+		name           string
+		query          string
+		serverStatus   int
+		serverBody     string
+		expectedStatus int
+		expectTitle    string
+		expectCover    bool
+	}{
+		{
+			name:           "Sucesso",
+			query:          "0132350882",
+			serverStatus:   http.StatusOK,
+			serverBody:     `{"ISBN:0132350882":{"title":"Clean Code","authors":[{"name":"Robert C. Martin"}],"publishers":[{"name":"Prentice Hall"}],"publish_date":"2008","number_of_pages":464,"description":{"value":"A Handbook"},"covers":[123]}}`,
+			expectedStatus: http.StatusOK,
+			expectTitle:    "Clean Code",
+			expectCover:    true,
+		},
+		{
+			name:           "Nao encontrado",
+			query:          "0132350882",
+			serverStatus:   http.StatusOK,
+			serverBody:     `{}`,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Erro upstream",
+			query:          "0132350882",
+			serverStatus:   http.StatusInternalServerError,
+			serverBody:     `{}`,
+			expectedStatus: http.StatusBadGateway,
+		},
+		{
+			name:           "ISBN invalido",
+			query:          "123",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "ISBN ausente",
+			query:          "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.query == "" || tt.serverStatus == 0 {
+				apiClient = api.NewBookAPIClient("http://127.0.0.1", 1)
+			} else {
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(tt.serverStatus)
+					_, _ = w.Write([]byte(tt.serverBody))
+				}))
+				defer srv.Close()
+
+				apiClient = api.NewBookAPIClient(srv.URL, 2)
+			}
+
+			url := "/api/isbn"
+			if tt.query != "" {
+				url = url + "?value=" + tt.query
+			}
+
+			req := httptest.NewRequest(http.MethodGet, url, nil)
+			w := httptest.NewRecorder()
+			handleAPISearchISBN(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("status = %d, want %d", w.Code, tt.expectedStatus)
+			}
+
+			if tt.expectedStatus == http.StatusOK {
+				var resp apiISBNResponse
+				_ = json.Unmarshal(w.Body.Bytes(), &resp)
+				if resp.Title != tt.expectTitle {
+					t.Errorf("title = %q, want %q", resp.Title, tt.expectTitle)
+				}
+				if tt.expectCover && resp.CoverURL == "" {
+					t.Errorf("cover_url vazio, esperado preenchido")
+				}
+			}
+		})
 	}
 }
 
